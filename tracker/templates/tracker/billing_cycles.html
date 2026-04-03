@@ -1,0 +1,90 @@
+{% extends "tracker/base.html" %}
+{% block title %}Billing Cycles — UnitsWatch{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Billing Cycles</div>
+  <div class="page-sub">Current cycle: {{ cycle_start|date:"d M Y" }} → {{ cycle_end|date:"d M Y" }} · {{ days_left }} days remaining</div>
+</div>
+
+{% for item in data %}
+<div class="card" style="margin-bottom:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <div>
+      <div style="font-size:15px;font-weight:600;">{{ item.meter.nickname }}</div>
+      <div style="font-size:12px;color:var(--muted);">EB: {{ item.meter.eb_account_no }} · {{ item.meter.location }}</div>
+    </div>
+    {% if item.predicted %}
+    <form method="POST" action="{% url 'close_cycle' item.meter.id %}" onsubmit="return confirm('Close this billing cycle and save the bill?')">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-amber btn-sm">Close Cycle & Save Bill</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Current cycle prediction -->
+  {% if item.predicted %}
+  <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;">
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Current Cycle — Prediction</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">Units Consumed</div>
+        <div style="font-size:22px;font-weight:600;color:var(--tealL);">{{ item.predicted.units }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">Estimated Bill</div>
+        <div style="font-size:22px;font-weight:600;color:{% if item.predicted.is_free %}var(--green){% else %}var(--red){% endif %};">₹{{ item.predicted.total }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">Status</div>
+        <span class="badge {% if item.predicted.is_free %}badge-green{% else %}badge-red{% endif %}" style="font-size:13px;padding:4px 12px;">
+          {% if item.predicted.is_free %}FREE SLAB ✅{% else %}CHARGEABLE{% endif %}
+        </span>
+      </div>
+    </div>
+    {% if item.predicted.alert %}
+    <div class="alert {% if '✅' in item.predicted.alert %}alert-success{% elif '⚠️' in item.predicted.alert %}alert-warn{% else %}alert-error{% endif %}" style="margin-top:12px;margin-bottom:0;">{{ item.predicted.alert }}</div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="alert alert-info" style="margin-bottom:16px;">Log at least 2 readings to see bill prediction.</div>
+  {% endif %}
+
+  <!-- Past bills -->
+  {% if item.bills %}
+  <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Past Closed Cycles</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Cycle</th>
+        <th>Start Reading</th>
+        <th>End Reading</th>
+        <th>Units Used</th>
+        <th>Bill Amount</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for bill in item.bills %}
+      <tr>
+        <td style="font-size:12px;color:var(--muted);">{{ bill.cycle_start }} → {{ bill.cycle_end }}</td>
+        <td style="font-family:'DM Mono',monospace;">{{ bill.start_reading }}</td>
+        <td style="font-family:'DM Mono',monospace;">{{ bill.end_reading }}</td>
+        <td style="color:var(--tealL);font-weight:500;">{{ bill.units_used }} units</td>
+        <td style="font-weight:600;color:{% if bill.is_free %}var(--green){% else %}var(--red){% endif %};">₹{{ bill.estimated_amount }}</td>
+        <td><span class="badge {% if bill.is_free %}badge-green{% else %}badge-red{% endif %}">{% if bill.is_free %}FREE{% else %}PAID{% endif %}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="font-size:13px;color:var(--muted);text-align:center;padding:16px 0;">No past cycles closed yet. Use "Close Cycle & Save Bill" above after each 2-month period.</div>
+  {% endif %}
+</div>
+{% empty %}
+<div class="card" style="text-align:center;padding:48px;">
+  <div style="font-size:38px;margin-bottom:12px;">🧾</div>
+  <div style="font-size:15px;font-weight:500;margin-bottom:6px;">No meters found</div>
+  <a href="{% url 'meters' %}" class="btn btn-primary" style="margin-top:8px;">Add a Meter</a>
+</div>
+{% endfor %}
+{% endblock %}

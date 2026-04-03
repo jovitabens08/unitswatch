@@ -1,0 +1,175 @@
+{% extends "tracker/base.html" %}
+{% block title %}{{ meter.nickname }} — UnitsWatch{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+  <div>
+    <div class="page-title">{{ meter.nickname }}</div>
+    <div class="page-sub">EB No: {{ meter.eb_account_no }} · {{ meter.location }}</div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <a href="{% url 'meters' %}" class="btn btn-outline btn-sm">← Back</a>
+    <button class="btn btn-primary" onclick="document.getElementById('readingModal').classList.add('open')">+ Log Reading</button>
+  </div>
+</div>
+
+<!-- Bill prediction card -->
+{% if predicted %}
+<div class="card" style="margin-bottom:20px;border-color:{% if predicted.is_free %}rgba(52,215,154,.3){% elif total_units <= 200 %}rgba(245,158,11,.3){% else %}rgba(239,68,68,.3){% endif %};">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Estimated Bill — Current Cycle</div>
+      <div style="font-size:42px;font-weight:600;letter-spacing:-1px;color:{% if predicted.is_free %}var(--green){% elif total_units <= 200 %}var(--amber){% else %}var(--red){% endif %};">
+        ₹{{ predicted.total }}
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-top:6px;">{{ predicted.units }} units consumed · Fixed charge: ₹{{ predicted.fixed_charge }}</div>
+      {% if predicted.alert %}
+      <div class="alert {% if '✅' in predicted.alert %}alert-success{% elif '⚠️' in predicted.alert %}alert-warn{% else %}alert-error{% endif %}" style="margin-top:12px;margin-bottom:0;">
+        {{ predicted.alert }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Slab breakdown -->
+    <div style="min-width:260px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Slab Breakdown</div>
+      {% for slab in predicted.slab_breakdown %}
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">
+        <span style="color:var(--muted);">{{ slab.slab }} units @ ₹{{ slab.rate }}</span>
+        <span style="font-family:'DM Mono',monospace;">{{ slab.units_in_slab }} units = ₹{{ slab.charge }}</span>
+      </div>
+      {% endfor %}
+      <div style="display:flex;justify-content:space-between;padding:8px 0 0;font-size:13px;font-weight:500;">
+        <span>Total</span>
+        <span style="color:{% if predicted.is_free %}var(--green){% else %}var(--amber){% endif %};">₹{{ predicted.total }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Free slab bar -->
+  <div style="margin-top:16px;">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px;">
+      <span>Free slab progress</span>
+      <span>{{ predicted.units }} / 100 units</span>
+    </div>
+    <div class="prog-track" style="height:8px;">
+      <div class="prog-fill" style="width:{% if predicted.units >= 100 %}100{% else %}{{ predicted.units }}{% endif %}%;background:{% if predicted.units <= 70 %}var(--green){% elif predicted.units <= 100 %}var(--amber){% else %}var(--red){% endif %};"></div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info" style="margin-bottom:20px;">Log at least 2 readings to see your estimated bill.</div>
+{% endif %}
+
+<!-- Readings chart -->
+{% if readings|length >= 2 %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title">Reading History — Chart</div>
+  <div style="position:relative;height:200px;">
+    <canvas id="readingChart"></canvas>
+  </div>
+</div>
+{% endif %}
+
+<!-- Readings table -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div class="card-title" style="margin-bottom:0;">All Readings</div>
+    <span style="font-size:12px;color:var(--muted);">{{ readings|length }} reading{{ readings|length|pluralize }}</span>
+  </div>
+
+  {% if readings %}
+  <table>
+    <thead>
+      <tr>
+        <th>Date Logged</th>
+        <th>Meter Reading</th>
+        <th>Units Since Prev</th>
+        <th>Est. Bill (segment)</th>
+        <th>Notes</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in readings %}
+      <tr>
+        <td style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;">{{ r.recorded_at|date:"d M Y, H:i" }}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--amber);">{{ r.reading_value }}</td>
+        <td>
+          {% if r.units > 0 %}
+            <span class="badge {% if r.units <= 50 %}badge-green{% elif r.units <= 100 %}badge-amber{% else %}badge-red{% endif %}">
+              {{ r.units }} units
+            </span>
+          {% else %}
+            <span style="color:var(--muted);">—</span>
+          {% endif %}
+        </td>
+        <td style="color:{% if r.is_free %}var(--green){% else %}var(--red){% endif %};">₹{{ r.bill_total }}</td>
+        <td style="font-size:12px;color:var(--muted);">{{ r.notes|default:"—" }}</td>
+        <td>
+          <form method="POST" action="{% url 'delete_reading' r.id %}" onsubmit="return confirm('Delete this reading?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="text-align:center;padding:32px;color:var(--muted);">No readings yet. Log your first reading above.</div>
+  {% endif %}
+</div>
+
+<!-- Add Reading Modal -->
+<div class="modal-overlay" id="readingModal">
+  <div class="modal">
+    <div class="modal-title">Log Meter Reading</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Enter the number shown on your physical EB meter (the cumulative reading — it never resets).</div>
+    <form method="POST" action="{% url 'add_reading' meter.id %}">
+      {% csrf_token %}
+      <div class="fg">
+        <label>Current Meter Reading (units) <span style="color:var(--red)">*</span></label>
+        <input type="number" name="reading_value" step="0.01" min="0" placeholder="e.g. 4271" required autofocus>
+      </div>
+      <div class="fg">
+        <label>Notes (optional)</label>
+        <input type="text" name="notes" placeholder="e.g. After AC installation">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('readingModal').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Reading</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if readings|length >= 2 %}
+<script>
+const labels = [{% for r in readings reversed %}"{{ r.recorded_at|date:'d M' }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+const values = [{% for r in readings reversed %}{{ r.reading_value }}{% if not forloop.last %},{% endif %}{% endfor %}];
+const units  = [{% for r in readings reversed %}{{ r.units }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+new Chart(document.getElementById('readingChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'Meter Reading', data: values, borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,.08)', fill: true, tension: 0.4, pointRadius: 4, borderWidth: 2, pointBackgroundColor: '#F59E0B', yAxisID: 'y' },
+      { label: 'Units Used', data: units, borderColor: '#14B8A6', backgroundColor: 'rgba(20,184,166,.08)', fill: false, tension: 0.4, pointRadius: 3, borderWidth: 2, type: 'bar', yAxisID: 'y1' }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#7B82A0', font: { size: 11 } } } },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#7B82A0', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#7B82A0', font: { size: 11 } }, position: 'left' },
+      y1: { position: 'right', grid: { display: false }, ticks: { color: '#7B82A0', font: { size: 11 } } }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

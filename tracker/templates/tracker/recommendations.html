@@ -1,0 +1,59 @@
+{% extends "tracker/base.html" %}
+{% block title %}Recommendations — UnitsWatch{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Recommendations</div>
+  <div class="page-sub">Personalised tips based on your current consumption pace</div>
+</div>
+
+<!-- Stats row -->
+<div class="g4" style="margin-bottom:20px;">
+  <div class="metric">
+    <div class="m-label">Units So Far</div>
+    <div class="m-value">{{ total_units }} <span class="m-unit">units</span></div>
+    <div class="m-delta neutral">This cycle</div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Estimated Bill</div>
+    <div class="m-value">₹{{ bill.total }}</div>
+    <div class="m-delta {% if bill.is_free %}down{% else %}up{% endif %}">
+      {% if bill.is_free %}Free slab ✅{% else %}Charges apply{% endif %}
+    </div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Days Elapsed</div>
+    <div class="m-value">{{ days_elapsed }} <span class="m-unit">days</span></div>
+    <div class="m-delta neutral">{{ days_left }} days left</div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Daily Budget (free slab)</div>
+    <div class="m-value">{{ daily_budget }} <span class="m-unit">units/day</span></div>
+    <div class="m-delta neutral">To stay under 100 units</div>
+  </div>
+</div>
+
+<!-- Tip cards -->
+{% for tip in tips %}
+<div class="tip-card {{ tip.severity }}">
+  <div style="font-size:24px;flex-shrink:0;margin-top:2px;">{{ tip.icon }}</div>
+  <div style="flex:1;">
+    <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:5px;">{{ tip.title }}</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.55;">{{ tip.body }}</div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Slab reference -->
+<div class="card" style="margin-top:20px;">
+  <div class="card-title">TNEB Tariff Reference (per 2-month cycle)</div>
+  <table>
+    <thead><tr><th>Units Consumed</th><th>Rate per Unit</th><th>Charges</th></tr></thead>
+    <tbody>
+      <tr><td>0 – 100 units</td><td style="color:var(--green);font-weight:500;">FREE</td><td style="color:var(--green);">₹0</td></tr>
+      <tr><td>101 – 200 units</td><td style="color:var(--amber);">₹1.50 / unit</td><td style="color:var(--muted);">+ ₹30 fixed charge</td></tr>
+      <tr><td>201 – 500 units</td><td style="color:var(--amber);">₹3.00 / unit</td><td style="color:var(--muted);">+ ₹30 fixed charge</td></tr>
+      <tr><td>501+ units</td><td style="color:var(--red);">₹5.00 / unit</td><td style="color:var(--muted);">+ ₹30 fixed charge</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

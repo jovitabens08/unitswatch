@@ -1,0 +1,6 @@
+django>=4.2
+pymongo[srv]
+dnspython
+python-dotenv
+gunicorn
+whitenoise

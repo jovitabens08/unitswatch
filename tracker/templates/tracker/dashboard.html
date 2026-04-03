@@ -1,0 +1,124 @@
+{% extends "tracker/base.html" %}
+{% block title %}Dashboard — UnitsWatch{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+  <div>
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Hello, {{ user.first_name|default:user.username }} — Billing cycle: {{ cycle_start|date:"d M" }} → {{ cycle_end|date:"d M Y" }} · {{ days_left }} days left</div>
+  </div>
+  <a href="{% url 'meters' %}" class="btn btn-primary">+ Add Meter</a>
+</div>
+
+{% for alert in alerts %}
+<div class="alert {% if '✅' in alert.msg %}alert-success{% elif '⚠️' in alert.msg %}alert-warn{% else %}alert-error{% endif %}">
+  <strong>{{ alert.meter }}:</strong> {{ alert.msg }}
+</div>
+{% endfor %}
+
+{% if not meter_data %}
+<div class="card" style="text-align:center;padding:52px;">
+  <div style="font-size:42px;margin-bottom:14px;">⚡</div>
+  <div style="font-size:16px;font-weight:500;margin-bottom:8px;">No meters added yet</div>
+  <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">Add your EB meter to start tracking TNEB consumption</div>
+  <a href="{% url 'meters' %}" class="btn btn-primary">Add First Meter</a>
+</div>
+{% else %}
+
+<div class="g4">
+  <div class="metric">
+    <div class="m-label">Total Units (this cycle)</div>
+    <div class="m-value">{{ total_units }} <span class="m-unit">units</span></div>
+    <div class="m-delta {% if total_units <= 100 %}down{% else %}up{% endif %}">
+      {% if total_units <= 100 %}✅ Within free slab{% else %}⚠️ Above free slab{% endif %}
+    </div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Estimated Bill</div>
+    <div class="m-value">₹{{ overall_bill.total }}</div>
+    <div class="m-delta {% if overall_bill.is_free %}down{% else %}up{% endif %}">
+      {% if overall_bill.is_free %}FREE — no charges{% else %}Charges apply{% endif %}
+    </div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Days Left in Cycle</div>
+    <div class="m-value">{{ days_left }} <span class="m-unit">days</span></div>
+    <div class="m-delta neutral">Cycle ends {{ cycle_end|date:"d M Y" }}</div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Daily Budget (free slab)</div>
+    <div class="m-value">{{ daily_budget }} <span class="m-unit">units/day</span></div>
+    <div class="m-delta neutral">To stay under {{ free_limit }} units</div>
+  </div>
+</div>
+
+<!-- Free slab overall progress -->
+<div class="card" style="margin-bottom:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <div style="font-size:13px;font-weight:500;">Free Slab Progress — All Meters Combined</div>
+    <span class="badge {% if total_units <= 100 %}badge-green{% elif total_units <= 150 %}badge-amber{% else %}badge-red{% endif %}">
+      {{ total_units }} / {{ free_limit }} units
+    </span>
+  </div>
+  <div class="prog-track" style="height:10px;">
+    <div class="prog-fill" style="width:{% if total_units >= 100 %}100{% else %}{{ total_units }}{% endif %}%;background:{% if total_units <= 70 %}var(--green){% elif total_units <= 100 %}var(--amber){% else %}var(--red){% endif %};transition:width .5s;"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px;">
+    <span>0 units</span>
+    <span>100 units (free limit)</span>
+    <span>200 units</span>
+  </div>
+</div>
+
+<!-- Per-meter cards -->
+{% for m in meter_data %}
+<div class="card" style="margin-bottom:14px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+    <div>
+      <div style="font-size:15px;font-weight:600;">{{ m.nickname }}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px;">EB: {{ m.eb_account_no }} · {{ m.location }}</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="badge {% if m.bill.is_free %}badge-green{% elif m.units <= 200 %}badge-amber{% else %}badge-red{% endif %}">
+        {% if m.bill.is_free %}FREE{% elif m.units <= 200 %}MODERATE{% else %}HIGH{% endif %}
+      </span>
+      <a href="{% url 'meter_detail' m.id %}" class="btn btn-outline btn-sm">View Details →</a>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
+    {% for label, val, color in m.latest_reading|default:"—",m.prev_reading|default:"—",m.units,m.bill.total %}{% endfor %}
+    <div style="background:var(--surface2);border-radius:9px;padding:12px;text-align:center;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Latest Reading</div>
+      <div style="font-size:19px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">{{ m.latest_reading|default:"—" }}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:9px;padding:12px;text-align:center;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Prev Reading</div>
+      <div style="font-size:19px;font-weight:600;font-family:'DM Mono',monospace;">{{ m.prev_reading|default:"—" }}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:9px;padding:12px;text-align:center;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Units Used</div>
+      <div style="font-size:19px;font-weight:600;color:var(--tealL);">{{ m.units }}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:9px;padding:12px;text-align:center;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Est. Bill</div>
+      <div style="font-size:19px;font-weight:600;color:{% if m.bill.is_free %}var(--green){% else %}var(--red){% endif %};">₹{{ m.bill.total }}</div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+    <span>Free slab usage</span><span>{{ m.units }} / 100 units</span>
+  </div>
+  <div class="prog-track">
+    <div class="prog-fill" style="width:{% if m.units >= 100 %}100{% else %}{{ m.units }}{% endif %}%;background:{% if m.units <= 70 %}var(--green){% elif m.units <= 100 %}var(--amber){% else %}var(--red){% endif %};"></div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:5px;">{{ m.reading_count }} reading{{ m.reading_count|pluralize }} logged · <a href="{% url 'meter_detail' m.id %}" style="color:var(--tealL);text-decoration:none;">Log new reading →</a></div>
+</div>
+{% endfor %}
+
+<div style="display:flex;gap:12px;margin-top:6px;">
+  <a href="{% url 'recommendations' %}" class="btn btn-outline">💡 View Recommendations</a>
+  <a href="{% url 'billing_cycles' %}" class="btn btn-outline">🧾 Billing Cycles</a>
+  <a href="{% url 'export_csv' %}" class="btn btn-outline">⬇ Export CSV</a>
+</div>
+{% endif %}
+{% endblock %}
