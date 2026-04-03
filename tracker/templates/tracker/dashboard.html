@@ -86,7 +86,7 @@
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
-    {% for label, val, color in m.latest_reading|default:"—",m.prev_reading|default:"—",m.units,m.bill.total %}{% endfor %}
+  
     <div style="background:var(--surface2);border-radius:9px;padding:12px;text-align:center;">
       <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Latest Reading</div>
       <div style="font-size:19px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">{{ m.latest_reading|default:"—" }}</div>
