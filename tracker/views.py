@@ -19,7 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from bson import ObjectId
-from flask import request
+
 
 from .db import get_meters_col, get_readings_col, get_bills_col
 from .tneb import (
