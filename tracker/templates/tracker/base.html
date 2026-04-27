@@ -131,6 +131,19 @@
       {% endfor %}
     </div>
   {% endif %}
+
+  <script>
+  // Auto-hide messages after 3 seconds
+  setTimeout(function() {
+    const msgBox = document.querySelector('[style*="position:fixed"][style*="top:20px"]');
+    if (msgBox) {
+      msgBox.style.transition = 'opacity 0.5s';
+      msgBox.style.opacity = '0';
+      setTimeout(() => msgBox.remove(), 500);
+    }
+  }, 3000);
+</script>
+
   {% block content %}{% endblock %}
 </main>
 {% block scripts %}{% endblock %}
