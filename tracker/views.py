@@ -19,6 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from bson import ObjectId
+from flask import request
 
 from .db import get_meters_col, get_readings_col, get_bills_col
 from .tneb import (
@@ -76,6 +77,9 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
     if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        print(f"Attempting login with username: '{username}' and password: '{password}'")  # Debugging
         user = authenticate(request,
                             username=request.POST.get('username', '').strip(),
                             password=request.POST.get('password', ''))
